@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Kanban · Sprint 1</title>
+<style>
+  :root{
+    --azul:#1F4E78; --azul2:#2E75B6; --verde:#548235; --dorado:#BF8F00;
+    --gris:#F3F5F8; --texto:#1F2933; --suave:#667085; --borde:#E1E6ED;
+    --porhacer:#E5E8EE; --progreso:#BDD7EE; --hecho:#C6E0B4;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--gris);color:var(--texto);
+       font-family:Arial,"Helvetica Neue",Helvetica,sans-serif;font-size:13px}
+  header{background:var(--azul);color:#fff;padding:22px 32px 18px}
+  header h1{margin:0;font-size:22px;letter-spacing:.2px}
+  header p{margin:4px 0 0;color:#CEDCEC;font-size:12px}
+  .cifras{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+  .cifra{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);
+         border-radius:8px;padding:7px 12px;font-size:11px;color:#E7EFF8}
+  .cifra b{display:block;font-size:16px;color:#fff}
+  .barra{margin-top:14px;height:8px;background:rgba(255,255,255,.2);border-radius:5px;overflow:hidden}
+  .barra span{display:block;height:100%;width:0;background:#7FB77E}
+  main{padding:22px 32px 40px}
+  .leyenda{display:flex;gap:18px;margin-bottom:14px;color:var(--suave);font-size:11px;flex-wrap:wrap}
+  .leyenda i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px}
+  .tablero{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}
+  .columna{background:#fff;border:1px solid var(--borde);border-radius:10px;overflow:hidden}
+  .columna h2{margin:0;padding:11px 14px;font-size:12px;letter-spacing:.6px;text-transform:uppercase;
+              display:flex;justify-content:space-between;align-items:center;color:#2B3A4A}
+  .columna h2 span{background:rgba(0,0,0,.06);border-radius:20px;padding:1px 8px;font-size:11px}
+  .c-porhacer h2{background:var(--porhacer)}
+  .c-progreso h2{background:var(--progreso)}
+  .c-hecho h2{background:var(--hecho)}
+  .tarjetas{padding:10px;display:flex;flex-direction:column;gap:8px;min-height:60px}
+  .tarjeta{background:#fff;border:1px solid var(--borde);border-left:4px solid var(--azul);
+           border-radius:8px;padding:9px 11px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+  .tarjeta .meta{display:flex;justify-content:space-between;align-items:center;
+                 font-size:10px;color:var(--suave);margin-bottom:4px}
+  .etiqueta{border-radius:4px;padding:1px 6px;color:#fff;font-weight:bold;font-size:9.5px;letter-spacing:.3px}
+  .h1{border-left-color:var(--azul)} .h1 .etiqueta{background:var(--azul)}
+  .h2{border-left-color:var(--azul2)} .h2 .etiqueta{background:var(--azul2)}
+  .h3{border-left-color:var(--verde)} .h3 .etiqueta{background:var(--verde)}
+  .h4{border-left-color:var(--dorado)} .h4 .etiqueta{background:var(--dorado)}
+  .tarjeta .t{font-size:12px;line-height:1.35}
+  .tarjeta .pie{margin-top:7px;display:flex;justify-content:space-between;align-items:center;
+                font-size:10.5px;color:var(--suave)}
+  .avatar{width:20px;height:20px;border-radius:50%;background:var(--azul);color:#fff;font-size:9px;
+          display:inline-flex;align-items:center;justify-content:center;margin-right:6px;font-weight:bold}
+  .quien{display:flex;align-items:center}
+  footer{padding:0 32px 28px;color:var(--suave);font-size:10.5px}
+  @media print{
+    body{background:#fff}
+    header,.tarjeta,.columna h2,.barra span{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    main{padding:14px}
+  }
+
+.tarjeta{cursor:grab;user-select:none;touch-action:none}
+.tarjeta:active{cursor:grabbing}
+.tarjeta.arrastrando{opacity:.35}
+.tarjeta.fantasma{position:fixed;z-index:99;pointer-events:none;width:300px;box-shadow:0 8px 20px rgba(16,24,40,.25);transform:rotate(2deg)}
+.tarjetas.sobre{background:#EEF4FB;outline:2px dashed var(--azul2);outline-offset:-4px}
+.hueco{height:3px;background:var(--azul2);border-radius:2px}
+.barra span{transition:width .4s}
+.reiniciar{margin-left:32px;margin-bottom:24px;padding:7px 14px;border:1px solid var(--borde);background:#fff;border-radius:6px;cursor:pointer;font-size:12px;color:var(--suave)}
+.reiniciar:focus-visible,.tarjeta:focus-visible{outline:2px solid var(--azul2)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Tablero Kanban · Sprint 1</h1>
+  <p>Sistema de Gestión Hospitalaria · viernes 13 al martes 17 de noviembre de 2026 (incluye sábado y domingo) · estado al martes 17</p>
+  <div class="cifras">
+    <div class="cifra"><b>20</b>tareas</div>
+    <div class="cifra"><b>80 h</b>capacidad (20 h por integrante)</div>
+    <div class="cifra"><b>52</b>puntos del sprint</div>
+    <div class="cifra"><b id="pct">60 %</b>avance en horas</div>
+  </div>
+  <div class="barra"><span id="avance"></span></div>
+</header>
+
+<main>
+  <div class="leyenda">
+    <span><i style="background:#1F4E78"></i>HU-01 Registrar pacientes · William Andres</span>
+    <span><i style="background:#2E75B6"></i>HU-02 Consultar pacientes · Jordy Llano</span>
+    <span><i style="background:#548235"></i>HU-03 Centros médicos · Daniel Chamba</span>
+    <span><i style="background:#BF8F00"></i>HU-04 Áreas hospitalarias · Jose Alvarez</span>
+  </div>
+  <div class="tablero">
+    <section class="columna c-porhacer"><h2>Por hacer <span id="n-porhacer"></span></h2><div class="tarjetas" data-col="porhacer"></div></section>
+    <section class="columna c-progreso"><h2>En progreso <span id="n-progreso"></span></h2><div class="tarjetas" data-col="progreso"></div></section>
+    <section class="columna c-hecho"><h2>Hecho <span id="n-hecho"></span></h2><div class="tarjetas" data-col="hecho"></div></section>
+  </div>
+</main>
+<button class="reiniciar" id="reiniciar">Restablecer tablero</button>
+<footer id="estado-sync">Arrastra las fichas entre columnas.</footer>
+<script>
+const DATOS=[{"h": "h1", "hu": "HU-01", "hrs": 4, "t": "Pruebas con cédulas repetidas y campos vacíos", "av": "WA", "who": "William Andres", "f": "Mar 17", "col": "porhacer"}, {"h": "h2", "hu": "HU-02", "hrs": 4, "t": "Ficha del paciente con triaje y cama asignada", "av": "JL", "who": "Jordy Llano", "f": "Mar 17", "col": "porhacer"}, {"h": "h3", "hu": "HU-03", "hrs": 4, "t": "Validaciones y mensajes de error del formulario", "av": "DC", "who": "Daniel Chamba", "f": "Mar 17", "col": "porhacer"}, {"h": "h4", "hu": "HU-04", "hrs": 4, "t": "Validación de áreas repetidas por sede", "av": "JA", "who": "Jose Alvarez", "f": "Mar 17", "col": "porhacer"}, {"h": "h1", "hu": "HU-01", "hrs": 4, "t": "Mensajes de error y confirmación de guardado", "av": "WA", "who": "William Andres", "f": "Lun 16", "col": "progreso"}, {"h": "h2", "hu": "HU-02", "hrs": 4, "t": "Mensaje «Paciente no registrado» y estado vacío", "av": "JL", "who": "Jordy Llano", "f": "Lun 16", "col": "progreso"}, {"h": "h3", "hu": "HU-03", "hrs": 4, "t": "Listado de centros con buscador", "av": "DC", "who": "Daniel Chamba", "f": "Lun 16", "col": "progreso"}, {"h": "h4", "hu": "HU-04", "hrs": 4, "t": "Listado de áreas por centro médico", "av": "JA", "who": "Jose Alvarez", "f": "Lun 16", "col": "progreso"}, {"h": "h1", "hu": "HU-01", "hrs": 4, "t": "Diseñar el modelo y la tabla de pacientes (cédula única)", "av": "WA", "who": "William Andres", "f": "Vie 13", "col": "hecho"}, {"h": "h1", "hu": "HU-01", "hrs": 4, "t": "Backend de registro con validación de cédula única", "av": "WA", "who": "William Andres", "f": "Sáb 14", "col": "hecho"}, {"h": "h1", "hu": "HU-01", "hrs": 4, "t": "Formulario de registro con validaciones en pantalla", "av": "WA", "who": "William Andres", "f": "Dom 15", "col": "hecho"}, {"h": "h2", "hu": "HU-02", "hrs": 4, "t": "Modelo de consulta por cédula y por apellidos", "av": "JL", "who": "Jordy Llano", "f": "Vie 13", "col": "hecho"}, {"h": "h2", "hu": "HU-02", "hrs": 4, "t": "Backend de búsqueda con coincidencias parciales", "av": "JL", "who": "Jordy Llano", "f": "Sáb 14", "col": "hecho"}, {"h": "h2", "hu": "HU-02", "hrs": 4, "t": "Pantalla de búsqueda con filtros y resultados", "av": "JL", "who": "Jordy Llano", "f": "Dom 15", "col": "hecho"}, {"h": "h3", "hu": "HU-03", "hrs": 4, "t": "Modelo y tabla de centros médicos (nombre único)", "av": "DC", "who": "Daniel Chamba", "f": "Vie 13", "col": "hecho"}, {"h": "h3", "hu": "HU-03", "hrs": 4, "t": "Backend del CRUD con validación de nombre único", "av": "DC", "who": "Daniel Chamba", "f": "Sáb 14", "col": "hecho"}, {"h": "h3", "hu": "HU-03", "hrs": 4, "t": "Formulario de creación y edición de centros", "av": "DC", "who": "Daniel Chamba", "f": "Dom 15", "col": "hecho"}, {"h": "h4", "hu": "HU-04", "hrs": 4, "t": "Modelo y tabla de áreas con relación al centro médico", "av": "JA", "who": "Jose Alvarez", "f": "Vie 13", "col": "hecho"}, {"h": "h4", "hu": "HU-04", "hrs": 4, "t": "Backend del CRUD con llave foránea y unicidad por sede", "av": "JA", "who": "Jose Alvarez", "f": "Sáb 14", "col": "hecho"}, {"h": "h4", "hu": "HU-04", "hrs": 4, "t": "Formulario de área con selector de centro y tipo", "av": "JA", "who": "Jose Alvarez", "f": "Dom 15", "col": "hecho"}];
+// ====== PEGA AQUÍ LA URL DE TU FIREBASE REALTIME DATABASE (sin barra final) ======
+const FIREBASE_URL='https://kanban-7610e-default-rtdb.firebaseio.com';   // ej: 'https://mi-kanban-default-rtdb.firebaseio.com'
+// ===============================================================================
+const KEY='kanban-sprint1-v1';
+const $=s=>document.querySelector(s);
+let estado;let drag=null;
+try{estado=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!estado||estado.length!==DATOS.length)estado=DATOS.map((d,i)=>({i,col:d.col}));
+function nube(){return FIREBASE_URL.replace(/\/$/,'')+'/sprint1/estado.json'}
+function aviso(t){const f=$('#estado-sync');if(f)f.textContent=t}
+function guardar(){
+  const j=JSON.stringify(estado);
+  try{localStorage.setItem(KEY,j)}catch(e){}
+  if(FIREBASE_URL)fetch(nube(),{method:'PUT',body:JSON.stringify(j)}).then(()=>aviso('Sincronizado con el equipo ✓')).catch(()=>aviso('Sin conexión: el cambio solo se guardó en este navegador'));
+}
+function aplicarRemoto(j){
+  if(drag||typeof j!=='string')return;
+  try{const n=JSON.parse(j);if(Array.isArray(n)&&n.length===DATOS.length&&JSON.stringify(n)!==JSON.stringify(estado)){estado=n;try{localStorage.setItem(KEY,j)}catch(e){}pintar()}}catch(e){}
+}
+function escuchar(){
+  if(!FIREBASE_URL){aviso('Modo local: configura FIREBASE_URL para que todo el equipo vea los mismos cambios.');return}
+  aviso('Conectando…');
+  const es=new EventSource(nube());
+  es.addEventListener('put',ev=>{const m=JSON.parse(ev.data);if(m.path==='/'){if(m.data===null)guardar();else aplicarRemoto(m.data);aviso('Sincronizado con el equipo ✓')}});
+  es.onerror=()=>aviso('Reconectando…');
+}
+function tarjeta(d,i){
+  const a=document.createElement('article');
+  a.className='tarjeta '+d.h;a.dataset.i=i;a.tabIndex=0;
+  a.innerHTML=`<div class="meta"><span class="etiqueta">${d.hu}</span><span>${d.hrs} h</span></div><div class="t">${d.t}</div><div class="pie"><span class="quien"><span class="avatar">${d.av}</span>${d.who}</span><span>${d.f}</span></div>`;
+  return a;
+}
+function pintar(){
+  document.querySelectorAll('.tarjetas').forEach(c=>c.innerHTML='');
+  estado.forEach(e=>document.querySelector(`.tarjetas[data-col="${e.col}"]`).appendChild(tarjeta(DATOS[e.i],e.i)));
+  contar();
+}
+function contar(){
+  let total=0,hecho=0;
+  ['porhacer','progreso','hecho'].forEach(c=>{
+    const n=document.querySelectorAll(`.tarjetas[data-col="${c}"] .tarjeta`).length;
+    $('#n-'+c).textContent=n;
+  });
+  document.querySelectorAll('.tarjeta').forEach(t=>{const h=DATOS[t.dataset.i].hrs;total+=h;if(t.parentElement.dataset.col==='hecho')hecho+=h});
+  const p=Math.round(hecho/total*100);
+  $('#pct').textContent=p+' %';$('#avance').style.width=p+'%';
+}
+function sincronizar(){
+  const orden=[];
+  document.querySelectorAll('.tarjetas').forEach(c=>c.querySelectorAll('.tarjeta').forEach(t=>orden.push({i:+t.dataset.i,col:c.dataset.col})));
+  estado=orden;guardar();contar();
+}
+function despues(cont,y){
+  const l=[...cont.querySelectorAll('.tarjeta:not(.arrastrando)')];
+  return l.find(t=>{const r=t.getBoundingClientRect();return y<r.top+r.height/2})||null;
+}
+document.addEventListener('pointerdown',e=>{
+  const t=e.target.closest('.tarjeta');if(!t||e.button>0)return;
+  const r=t.getBoundingClientRect();
+  const g=t.cloneNode(true);g.classList.add('fantasma');g.style.width=r.width+'px';document.body.appendChild(g);
+  drag={t,g,dx:e.clientX-r.left,dy:e.clientY-r.top};
+  t.classList.add('arrastrando');mover(e);
+  t.setPointerCapture&&t.setPointerCapture(e.pointerId);
+});
+function mover(e){
+  const{g,t,dx,dy}=drag;
+  g.style.left=(e.clientX-dx)+'px';g.style.top=(e.clientY-dy)+'px';
+  document.querySelectorAll('.tarjetas').forEach(c=>c.classList.remove('sobre'));
+  g.style.display='none';
+  const el=document.elementFromPoint(e.clientX,e.clientY);g.style.display='';
+  const c=el&&el.closest('.tarjetas');
+  if(c){c.classList.add('sobre');const ref=despues(c,e.clientY);ref?c.insertBefore(t,ref):c.appendChild(t);}
+}
+document.addEventListener('pointermove',e=>{if(drag)mover(e)});
+function soltar(){
+  if(!drag)return;
+  drag.g.remove();drag.t.classList.remove('arrastrando');
+  document.querySelectorAll('.tarjetas').forEach(c=>c.classList.remove('sobre'));
+  drag=null;sincronizar();
+}
+document.addEventListener('pointerup',soltar);
+document.addEventListener('pointercancel',soltar);
+// teclado: flechas izquierda/derecha mueven la ficha enfocada
+document.addEventListener('keydown',e=>{
+  const t=document.activeElement;if(!t||!t.classList.contains('tarjeta'))return;
+  const cols=['porhacer','progreso','hecho'];
+  const k=cols.indexOf(t.parentElement.dataset.col)+(e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:0);
+  if(k<0||k>2||!/Arrow(Left|Right)/.test(e.key))return;
+  document.querySelector(`.tarjetas[data-col="${cols[k]}"]`).appendChild(t);t.focus();sincronizar();
+});
+$('#reiniciar').onclick=()=>{estado=DATOS.map((d,i)=>({i,col:d.col}));guardar();pintar()};
+pintar();escuchar();
+</script>
+</body>
+</html>
