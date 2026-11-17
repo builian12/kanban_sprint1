@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kanban</title><style>
+  :root{
+    --azul:#1F4E78; --azul2:#2E75B6; --verde:#548235; --dorado:#BF8F00;
+    --gris:#F3F5F8; --texto:#1F2933; --suave:#667085; --borde:#E1E6ED;
+    --porhacer:#E5E8EE; --progreso:#BDD7EE; --hecho:#C6E0B4;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--gris);color:var(--texto);
+       font-family:Arial,"Helvetica Neue",Helvetica,sans-serif;font-size:13px}
+  header{background:var(--azul);color:#fff;padding:22px 32px 18px}
+  header h1{margin:0;font-size:22px;letter-spacing:.2px}
+  header p{margin:4px 0 0;color:#CEDCEC;font-size:12px}
+  .cifras{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+  .cifra{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);
+         border-radius:8px;padding:7px 12px;font-size:11px;color:#E7EFF8}
+  .cifra b{display:block;font-size:16px;color:#fff}
+  .barra{margin-top:14px;height:8px;background:rgba(255,255,255,.2);border-radius:5px;overflow:hidden}
+  .barra span{display:block;height:100%;width:0;background:#7FB77E}
+  main{padding:22px 32px 40px}
+  .leyenda{display:flex;gap:18px;margin-bottom:14px;color:var(--suave);font-size:11px;flex-wrap:wrap}
+  .leyenda i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px}
+  .tablero{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}
+  .columna{background:#fff;border:1px solid var(--borde);border-radius:10px;overflow:hidden}
+  .columna h2{margin:0;padding:11px 14px;font-size:12px;letter-spacing:.6px;text-transform:uppercase;
+              display:flex;justify-content:space-between;align-items:center;color:#2B3A4A}
+  .columna h2 span{background:rgba(0,0,0,.06);border-radius:20px;padding:1px 8px;font-size:11px}
+  .c-porhacer h2{background:var(--porhacer)}
+  .c-progreso h2{background:var(--progreso)}
+  .c-hecho h2{background:var(--hecho)}
+  .tarjetas{padding:10px;display:flex;flex-direction:column;gap:8px;min-height:60px}
+  .tarjeta{background:#fff;border:1px solid var(--borde);border-left:4px solid var(--azul);
+           border-radius:8px;padding:9px 11px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+  .tarjeta .meta{display:flex;justify-content:space-between;align-items:center;
+                 font-size:10px;color:var(--suave);margin-bottom:4px}
+  .etiqueta{border-radius:4px;padding:1px 6px;color:#fff;font-weight:bold;font-size:9.5px;letter-spacing:.3px}
+    .tarjeta .t{font-size:12px;line-height:1.35}
+  .tarjeta .pie{margin-top:7px;display:flex;justify-content:space-between;align-items:center;
+                font-size:10.5px;color:var(--suave)}
+  .avatar{width:20px;height:20px;border-radius:50%;background:var(--azul);color:#fff;font-size:9px;
+          display:inline-flex;align-items:center;justify-content:center;margin-right:6px;font-weight:bold}
+  .quien{display:flex;align-items:center}
+  footer{padding:0 32px 28px;color:var(--suave);font-size:10.5px}
+  @media print{
+    body{background:#fff}
+    header,.tarjeta,.columna h2,.barra span{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    main{padding:14px}
+  }
+
+.tarjeta{cursor:grab;user-select:none;touch-action:none}
+.tarjeta:active{cursor:grabbing}
+.tarjeta.arrastrando{opacity:.35}
+.tarjeta.fantasma{position:fixed;z-index:99;pointer-events:none;width:300px;box-shadow:0 8px 20px rgba(16,24,40,.25);transform:rotate(2deg)}
+.tarjetas.sobre{background:#EEF4FB;outline:2px dashed var(--azul2);outline-offset:-4px}
+.hueco{height:3px;background:var(--azul2);border-radius:2px}
+.barra span{transition:width .4s}
+.reiniciar{margin-left:32px;margin-bottom:24px;padding:7px 14px;border:1px solid var(--borde);background:#fff;border-radius:6px;cursor:pointer;font-size:12px;color:var(--suave)}
+.reiniciar:focus-visible,.tarjeta:focus-visible{outline:2px solid var(--azul2)}
+
+.tarjeta{border-left-color:var(--c)} .etiqueta{background:var(--c)}
+.avatar{background:var(--c,#1F4E78)}
+.barra span{width:0}
+.barra{margin-top:14px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.bar select,.bar button,dialog button{font:inherit;padding:7px 12px;border:1px solid var(--borde);background:#fff;border-radius:6px;cursor:pointer;color:var(--texto)}
+.bar .pri,dialog .pri{background:var(--azul);color:#fff;border-color:var(--azul)}
+.bar select{font-weight:bold}
+.acc{position:absolute;top:5px;right:6px;display:none;gap:2px}
+.tarjeta{position:relative}.tarjeta:hover .acc{display:flex}
+.acc button{border:0;background:#F3F5F8;border-radius:4px;cursor:pointer;font-size:11px;padding:1px 5px;color:var(--suave)}
+.tarjeta .meta{padding-right:0}
+.vacio{color:var(--suave);font-size:11px;text-align:center;padding:8px}
+dialog{border:1px solid var(--borde);border-radius:10px;padding:20px;width:min(380px,92vw);font:13px Arial,sans-serif;color:var(--texto)}
+dialog::backdrop{background:rgba(16,24,40,.4)}
+dialog h3{margin:0 0 12px;font-size:15px}
+dialog label{display:block;margin-top:10px;font-size:11px;color:var(--suave)}
+dialog input[type=text],dialog input[type=number],dialog input[type=date],dialog select{width:100%;margin-top:3px;padding:7px;border:1px solid var(--borde);border-radius:6px;font:inherit}
+dialog .ck{display:flex;gap:6px;align-items:center;color:var(--texto);font-size:12px}
+dialog .fila{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+dialog .del{margin-right:auto;color:#B42318}
+@media(max-width:800px){.tablero{grid-template-columns:1fr}header,main{padding-left:16px;padding-right:16px}}
+</style></head><body>
+<header>
+  <h1 id="h-nombre"></h1><p id="h-fechas"></p>
+  <div class="cifras" id="cifras"></div>
+  <div class="barra"><span id="avance"></span></div>
+</header>
+<main>
+  <div class="bar">
+    <select id="sel" aria-label="Sprint"></select>
+    <button class="pri" id="b-tarea">+ Nueva tarea</button>
+    <button id="b-sprint">+ Nuevo sprint</button>
+  </div>
+  <div class="leyenda" id="leyenda"></div>
+  <div class="tablero">
+    <section class="columna c-porhacer"><h2>Por hacer <span id="n-porhacer"></span></h2><div class="tarjetas" data-col="porhacer"></div></section>
+    <section class="columna c-progreso"><h2>En progreso <span id="n-progreso"></span></h2><div class="tarjetas" data-col="progreso"></div></section>
+    <section class="columna c-hecho"><h2>Hecho <span id="n-hecho"></span></h2><div class="tarjetas" data-col="hecho"></div></section>
+  </div>
+</main>
+<footer id="estado-sync"></footer>
+
+<dialog id="dT"><h3 id="dT-h"></h3>
+  <label>Historia de usuario<select id="t-hu"></select></label>
+  <div id="t-nueva" hidden><label>Nombre de la nueva historia<input type="text" id="t-hun" maxlength="60"></label></div>
+  <label>Tarea<input type="text" id="t-t" maxlength="120"></label>
+  <label>Horas<input type="number" id="t-hrs" min="1" max="40" value="4"></label>
+  <label>Responsable<select id="t-who"></select></label>
+  <label>Fecha límite<input type="date" id="t-f"></label>
+  <label>Columna<select id="t-col"><option value="porhacer">Por hacer</option><option value="progreso">En progreso</option><option value="hecho">Hecho</option></select></label>
+  <div class="fila"><button class="del" id="t-del" type="button">Eliminar</button><button type="button" id="t-no">Cancelar</button><button class="pri" type="button" id="t-ok">Guardar</button></div>
+</dialog>
+
+<dialog id="dS"><h3>Nuevo sprint</h3>
+  <label>Nombre<input type="text" id="s-n" maxlength="40"></label>
+  <label>Inicio<input type="date" id="s-i"></label>
+  <label>Fin<input type="date" id="s-f"></label>
+  <label>Capacidad total (horas)<input type="number" id="s-c" min="1" value="80"></label>
+  <label class="ck"><input type="checkbox" id="s-t" checked> Pasar las tareas sin terminar del sprint actual</label>
+  <div class="fila"><button type="button" id="s-no">Cancelar</button><button class="pri" type="button" id="s-ok">Crear sprint</button></div>
+</dialog>
+
+<script>
+// ====== URL de Firebase Realtime Database ======
+const FIREBASE_URL='https://kanban-7610e-default-rtdb.firebaseio.com';
+// ===============================================
+const ANT=[{"h": "h1", "hu": "HU-01", "hrs": 4, "t": "Pruebas con cédulas repetidas y campos vacíos", "av": "WA", "who": "William Andres", "f": "Mar 17", "col": "porhacer"}, {"h": "h2", "hu": "HU-02", "hrs": 4, "t": "Ficha del paciente con triaje y cama asignada", "av": "JL", "who": "Jordy Llano", "f": "Mar 17", "col": "porhacer"}, {"h": "h3", "hu": "HU-03", "hrs": 4, "t": "Validaciones y mensajes de error del formulario", "av": "DC", "who": "Daniel Chamba", "f": "Mar 17", "col": "porhacer"}, {"h": "h4", "hu": "HU-04", "hrs": 4, "t": "Validación de áreas repetidas por sede", "av": "JA", "who": "Jose Alvarez", "f": "Mar 17", "col": "porhacer"}, {"h": "h1", "hu": "HU-01", "hrs": 4, "t": "Mensajes de error y confirmación de guardado", "av": "WA", "who": "William Andres", "f": "Lun 16", "col": "progreso"}, {"h": "h2", "hu": "HU-02", "hrs": 4, "t": "Mensaje «Paciente no registrado» y estado vacío", "av": "JL", "who": "Jordy Llano", "f": "Lun 16", "col": "progreso"}, {"h": "h3", "hu": "HU-03", "hrs": 4, "t": "Listado de centros con buscador", "av": "DC", "who": "Daniel Chamba", "f": "Lun 16", "col": "progreso"}, {"h": "h4", "hu": "HU-04", "hrs": 4, "t": "Listado de áreas por centro médico", "av": "JA", "who": "Jose Alvarez", "f": "Lun 16", "col": "progreso"}, {"h": "h1", "hu": "HU-01", "hrs": 4, "t": "Diseñar el modelo y la tabla de pacientes (cédula única)", "av": "WA", "who": "William Andres", "f": "Vie 13", "col": "hecho"}, {"h": "h1", "hu": "HU-01", "hrs": 4, "t": "Backend de registro con validación de cédula única", "av": "WA", "who": "William Andres", "f": "Sáb 14", "col": "hecho"}, {"h": "h1", "hu": "HU-01", "hrs": 4, "t": "Formulario de registro con validaciones en pantalla", "av": "WA", "who": "William Andres", "f": "Dom 15", "col": "hecho"}, {"h": "h2", "hu": "HU-02", "hrs": 4, "t": "Modelo de consulta por cédula y por apellidos", "av": "JL", "who": "Jordy Llano", "f": "Vie 13", "col": "hecho"}, {"h": "h2", "hu": "HU-02", "hrs": 4, "t": "Backend de búsqueda con coincidencias parciales", "av": "JL", "who": "Jordy Llano", "f": "Sáb 14", "col": "hecho"}, {"h": "h2", "hu": "HU-02", "hrs": 4, "t": "Pantalla de búsqueda con filtros y resultados", "av": "JL", "who": "Jordy Llano", "f": "Dom 15", "col": "hecho"}, {"h": "h3", "hu": "HU-03", "hrs": 4, "t": "Modelo y tabla de centros médicos (nombre único)", "av": "DC", "who": "Daniel Chamba", "f": "Vie 13", "col": "hecho"}, {"h": "h3", "hu": "HU-03", "hrs": 4, "t": "Backend del CRUD con validación de nombre único", "av": "DC", "who": "Daniel Chamba", "f": "Sáb 14", "col": "hecho"}, {"h": "h3", "hu": "HU-03", "hrs": 4, "t": "Formulario de creación y edición de centros", "av": "DC", "who": "Daniel Chamba", "f": "Dom 15", "col": "hecho"}, {"h": "h4", "hu": "HU-04", "hrs": 4, "t": "Modelo y tabla de áreas con relación al centro médico", "av": "JA", "who": "Jose Alvarez", "f": "Vie 13", "col": "hecho"}, {"h": "h4", "hu": "HU-04", "hrs": 4, "t": "Backend del CRUD con llave foránea y unicidad por sede", "av": "JA", "who": "Jose Alvarez", "f": "Sáb 14", "col": "hecho"}, {"h": "h4", "hu": "HU-04", "hrs": 4, "t": "Formulario de área con selector de centro y tipo", "av": "JA", "who": "Jose Alvarez", "f": "Dom 15", "col": "hecho"}];
+const MIEMBROS=['William Andres','Jordy Llano','Daniel Chamba','Jose Alvarez'];
+const PAL=['#1F4E78','#2E75B6','#548235','#BF8F00','#7B3F98','#C0504D','#16837E','#8A5A44'];
+const DIAS=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const KEY='kanban-v2';
+const $=s=>document.querySelector(s);
+let datos,sprintId,drag=null,editId=null;
+
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const fmtF=iso=>{if(!iso)return '';const d=new Date(iso+'T12:00');return DIAS[d.getDay()]+' '+d.getDate()};
+const fmtL=iso=>new Date(iso+'T12:00').toLocaleDateString('es',{day:'numeric',month:'short'});
+const sumaDias=(iso,n)=>{const d=new Date(iso+'T12:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
+const iniciales=n=>n.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+function el(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
+
+function inicial(){
+  const hus=[['HU-01','Registrar pacientes'],['HU-02','Consultar pacientes'],['HU-03','Centros médicos'],['HU-04','Áreas hospitalarias']].map((h,i)=>({id:h[0],nombre:h[1],c:PAL[i]}));
+  return{hus,sprints:[{id:1,nombre:'Sprint 1',ini:'2026-11-13',fin:'2026-11-17',cap:80}],
+    tareas:ANT.map(d=>({id:uid(),s:1,hu:d.hu,t:d.t,hrs:d.hrs,who:d.who,f:d.f,col:d.col}))};
+}
+function valido(o){return o&&Array.isArray(o.tareas)&&Array.isArray(o.sprints)&&o.sprints.length&&Array.isArray(o.hus)}
+try{const l=JSON.parse(localStorage.getItem(KEY));if(valido(l))datos=l}catch(e){}
+if(!datos)datos=inicial();
+sprintId=datos.sprints[datos.sprints.length-1].id;
+
+const nube=()=>FIREBASE_URL.replace(/\/$/,'')+'/kanban2/datos.json';
+function aviso(t){$('#estado-sync').textContent=t}
+function guardar(){
+  const j=JSON.stringify(datos);
+  try{localStorage.setItem(KEY,j)}catch(e){}
+  if(FIREBASE_URL)fetch(nube(),{method:'PUT',body:JSON.stringify(j)}).then(()=>aviso('Sincronizado con el equipo ✓')).catch(()=>aviso('Sin conexión: el cambio solo se guardó en este navegador'));
+}
+function remoto(j){
+  if(drag||typeof j!=='string')return;
+  try{const n=JSON.parse(j);if(valido(n)&&j!==JSON.stringify(datos)){datos=n;
+    if(!datos.sprints.some(s=>s.id===sprintId))sprintId=datos.sprints[datos.sprints.length-1].id;
+    try{localStorage.setItem(KEY,j)}catch(e){}pintar()}}catch(e){}
+}
+function escuchar(){
+  if(!FIREBASE_URL){aviso('Modo local: configura FIREBASE_URL para compartir con el equipo.');return}
+  aviso('Conectando…');
+  const es=new EventSource(nube());
+  es.addEventListener('put',ev=>{const m=JSON.parse(ev.data);
+    if(m.path!=='/')return;
+    if(m.data===null)migrar();else{remoto(m.data);aviso('Sincronizado con el equipo ✓')}});
+  es.onerror=()=>aviso('Reconectando…');
+}
+// primera vez: recupera el avance que ya tenían guardado del Sprint 1
+function migrar(){
+  fetch(FIREBASE_URL.replace(/\/$/,'')+'/sprint1/estado.json').then(r=>r.json()).then(j=>{
+    try{const old=JSON.parse(j);
+      if(Array.isArray(old)&&old.length===ANT.length&&datos.sprints.length===1){
+        const base=datos.tareas.slice();datos.tareas=old.map(o=>({...base[o.i],col:o.col}))}}catch(e){}
+  }).catch(()=>{}).finally(()=>{guardar();pintar()});
+}
+
+const sprint=()=>datos.sprints.find(s=>s.id===sprintId);
+const hu=id=>datos.hus.find(h=>h.id===id)||{id,c:'#667085',nombre:''};
+const color=t=>hu(t.hu).c;
+
+function tarjeta(t){
+  const a=el('article','tarjeta');a.dataset.id=t.id;a.tabIndex=0;a.style.setProperty('--c',color(t));
+  const m=el('div','meta');m.append(el('span','etiqueta',t.hu),el('span','',t.hrs+' h'));
+  const pie=el('div','pie'),q=el('span','quien'),av=el('span','avatar',iniciales(t.who));av.style.background=color(t);
+  q.append(av,t.who);pie.append(q,el('span','',t.f||''));
+  const acc=el('div','acc'),e=el('button','','✎'),x=el('button','','✕');
+  e.title='Editar';x.title='Eliminar';e.dataset.a='e';x.dataset.a='x';acc.append(e,x);
+  a.append(acc,m,el('div','t',t.t),pie);return a;
+}
+function pintar(){
+  const s=sprint();
+  $('#sel').replaceChildren(...datos.sprints.map(x=>{const o=el('option','',x.nombre);o.value=x.id;return o}));$('#sel').value=s.id;
+  $('#h-nombre').textContent='Tablero Kanban · '+s.nombre;
+  $('#h-fechas').textContent=fmtL(s.ini)+' al '+fmtL(s.fin)+' de '+new Date(s.fin+'T12:00').getFullYear();
+  document.title='Kanban · '+s.nombre;
+  document.querySelectorAll('.tarjetas').forEach(c=>c.replaceChildren());
+  const ts=datos.tareas.filter(t=>t.s===s.id);
+  ts.forEach(t=>document.querySelector(`.tarjetas[data-col="${t.col}"]`).append(tarjeta(t)));
+  document.querySelectorAll('.tarjetas').forEach(c=>{if(!c.children.length)c.append(el('div','vacio','Sin tareas'))});
+  const usadas=[...new Set(ts.map(t=>t.hu))];
+  $('#leyenda').replaceChildren(...datos.hus.filter(h=>usadas.includes(h.id)).map(h=>{
+    const sp=el('span'),i=el('i');i.style.background=h.c;sp.append(i,h.id+' '+h.nombre);return sp}));
+  stats();
+}
+function stats(){
+  const s=sprint(),ts=datos.tareas.filter(t=>t.s===s.id);
+  const tot=ts.reduce((a,t)=>a+t.hrs,0),ok=ts.filter(t=>t.col==='hecho').reduce((a,t)=>a+t.hrs,0);
+  const p=tot?Math.round(ok/tot*100):0;
+  ['porhacer','progreso','hecho'].forEach(c=>$('#n-'+c).textContent=ts.filter(t=>t.col===c).length);
+  $('#cifras').replaceChildren(...[[ts.length,'tareas'],[s.cap+' h','capacidad'],[tot+' h','planificadas'],[p+' %','avance en horas']].map(([b,l])=>{
+    const d=el('div','cifra');d.append(el('b','',b),l);return d}));
+  $('#avance').style.width=p+'%';
+}
+function sincronizar(){
+  const s=sprint().id,orden=[];
+  document.querySelectorAll('.tarjetas').forEach(c=>c.querySelectorAll('.tarjeta').forEach(a=>{
+    const t=datos.tareas.find(x=>x.id===a.dataset.id);if(t){t.col=c.dataset.col;orden.push(t)}}));
+  datos.tareas=datos.tareas.filter(t=>t.s!==s).concat(orden);
+  guardar();stats();
+}
+// ---- arrastrar ----
+function despues(c,y){return [...c.querySelectorAll('.tarjeta:not(.arrastrando)')].find(t=>{const r=t.getBoundingClientRect();return y<r.top+r.height/2})||null}
+document.addEventListener('pointerdown',e=>{
+  const t=e.target.closest('.tarjeta');if(!t||e.button>0||e.target.closest('.acc'))return;
+  const r=t.getBoundingClientRect(),g=t.cloneNode(true);
+  g.classList.add('fantasma');g.style.width=r.width+'px';document.body.append(g);
+  drag={t,g,dx:e.clientX-r.left,dy:e.clientY-r.top};t.classList.add('arrastrando');mover(e);
+});
+function mover(e){
+  const{g,t,dx,dy}=drag;g.style.left=(e.clientX-dx)+'px';g.style.top=(e.clientY-dy)+'px';
+  document.querySelectorAll('.tarjetas').forEach(c=>c.classList.remove('sobre'));
+  g.style.display='none';const o=document.elementFromPoint(e.clientX,e.clientY);g.style.display='';
+  const c=o&&o.closest('.tarjetas');
+  if(c){c.classList.add('sobre');c.querySelector('.vacio')?.remove();const r=despues(c,e.clientY);r?c.insertBefore(t,r):c.append(t)}
+}
+document.addEventListener('pointermove',e=>{if(drag)mover(e)});
+function soltar(){
+  if(!drag)return;drag.g.remove();drag.t.classList.remove('arrastrando');
+  document.querySelectorAll('.tarjetas').forEach(c=>c.classList.remove('sobre'));
+  drag=null;sincronizar();pintar();
+}
+document.addEventListener('pointerup',soltar);document.addEventListener('pointercancel',soltar);
+document.addEventListener('keydown',e=>{
+  const t=document.activeElement;if(!t||!t.classList.contains('tarjeta')||!/Arrow(Left|Right)/.test(e.key))return;
+  const cols=['porhacer','progreso','hecho'],k=cols.indexOf(t.parentElement.dataset.col)+(e.key==='ArrowRight'?1:-1);
+  if(k<0||k>2)return;const id=t.dataset.id;
+  document.querySelector(`.tarjetas[data-col="${cols[k]}"]`).append(t);sincronizar();pintar();
+  document.querySelector(`.tarjeta[data-id="${id}"]`)?.focus();
+});
+// ---- tarjetas: editar / eliminar ----
+document.addEventListener('click',e=>{
+  const b=e.target.closest('.acc button');if(!b)return;
+  const id=b.closest('.tarjeta').dataset.id;
+  if(b.dataset.a==='x'){if(confirm('¿Eliminar esta tarea?')){datos.tareas=datos.tareas.filter(t=>t.id!==id);guardar();pintar()}}
+  else abrirTarea(id);
+});
+// ---- modal tarea ----
+function opciones(sel,vals,fn){sel.replaceChildren(...vals.map(v=>{const o=el('option','',fn?fn(v):v);o.value=v.id??v;return o}))}
+function abrirTarea(id){
+  editId=id||null;const t=id?datos.tareas.find(x=>x.id===id):null,s=sprint();
+  $('#dT-h').textContent=t?'Editar tarea':'Nueva tarea en '+s.nombre;
+  opciones($('#t-hu'),datos.hus,h=>h.id+' '+h.nombre);
+  const n=el('option','','+ Nueva historia de usuario');n.value='__nueva';$('#t-hu').append(n);
+  opciones($('#t-who'),MIEMBROS);
+  $('#t-hu').value=t?t.hu:datos.hus[0].id;$('#t-hun').value='';$('#t-nueva').hidden=true;
+  $('#t-t').value=t?t.t:'';$('#t-hrs').value=t?t.hrs:4;$('#t-who').value=t?t.who:MIEMBROS[0];
+  $('#t-f').value=t?.fi||'';$('#t-col').value=t?t.col:'porhacer';$('#t-del').hidden=!t;
+  $('#dT').showModal();
+}
+$('#t-hu').onchange=()=>$('#t-nueva').hidden=$('#t-hu').value!=='__nueva';
+$('#b-tarea').onclick=()=>abrirTarea();
+$('#t-no').onclick=()=>$('#dT').close();
+$('#t-del').onclick=()=>{datos.tareas=datos.tareas.filter(t=>t.id!==editId);$('#dT').close();guardar();pintar()};
+$('#t-ok').onclick=()=>{
+  const txt=$('#t-t').value.trim();if(!txt){$('#t-t').focus();return}
+  let h=$('#t-hu').value;
+  if(h==='__nueva'){
+    const nom=$('#t-hun').value.trim();if(!nom){$('#t-hun').focus();return}
+    const nn=Math.max(0,...datos.hus.map(x=>parseInt(x.id.slice(3))||0))+1;
+    h='HU-'+String(nn).padStart(2,'0');datos.hus.push({id:h,nombre:nom,c:PAL[(datos.hus.length)%PAL.length]});
+  }
+  const f=$('#t-f').value,campos={hu:h,t:txt,hrs:Math.max(1,+$('#t-hrs').value||1),who:$('#t-who').value,f:fmtF(f),fi:f,col:$('#t-col').value};
+  if(editId)Object.assign(datos.tareas.find(x=>x.id===editId),campos);
+  else datos.tareas.push({id:uid(),s:sprintId,...campos});
+  $('#dT').close();guardar();pintar();
+};
+// ---- sprints ----
+$('#sel').onchange=()=>{sprintId=+$('#sel').value;pintar()};
+$('#b-sprint').onclick=()=>{
+  const u=datos.sprints[datos.sprints.length-1],ini=sumaDias(u.fin,1);
+  $('#s-n').value='Sprint '+(Math.max(...datos.sprints.map(s=>s.id))+1);
+  $('#s-i').value=ini;$('#s-f').value=sumaDias(ini,6);$('#s-c').value=u.cap;$('#s-t').checked=true;
+  $('#dS').showModal();
+};
+$('#s-no').onclick=()=>$('#dS').close();
+$('#s-ok').onclick=()=>{
+  const nom=$('#s-n').value.trim(),i=$('#s-i').value,f=$('#s-f').value;
+  if(!nom||!i||!f||f<i){alert('Revisa el nombre y que la fecha de fin no sea anterior al inicio.');return}
+  const id=Math.max(...datos.sprints.map(s=>s.id))+1;
+  if($('#s-t').checked)datos.tareas.forEach(t=>{if(t.s===sprintId&&t.col!=='hecho'){t.s=id;t.col='porhacer'}});
+  datos.sprints.push({id,nombre:nom,ini:i,fin:f,cap:+$('#s-c').value||80});
+  sprintId=id;$('#dS').close();guardar();pintar();
+};
+pintar();escuchar();
+</script></body></html>
